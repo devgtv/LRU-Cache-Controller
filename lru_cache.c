@@ -31,7 +31,7 @@ Node* createNode(int key,int value) {
     return newNode;
 }
 
-// criar cache
+// inicializa o cache lru
 LRUCache* createCache(int capacity) {
     LRUCache* cache = (LRUCache*)malloc(sizeof(LRUCache));
     cache-> capacity = capacity;
