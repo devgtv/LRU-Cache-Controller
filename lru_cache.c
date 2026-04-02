@@ -9,7 +9,7 @@ typedef struct Node
     int value; // Valor do elemento 
     struct NODE* prev; // ponteiro para o no anterior
     struct NODE* next; // ponteiro para o proximo no 
-}Node;
+} Node;
 
 typedef struct LRUCache {
     int capacity; // capacidade maxima do cache
@@ -34,11 +34,29 @@ Node* createNode(int key,int value) {
 // inicializa o cache lru
 LRUCache* createCache(int capacity) {
     LRUCache* cache = (LRUCache*)malloc(sizeof(LRUCache));
-    cache-> capacity = capacity;
-    cache-> size = 0;
-    cache-> head = NULL;
+    cache->capacity = capacity;
+    cache->size = 0;
+    cache->head = NULL;
+    return cache;
 }
 
+// mover um no para o inicio da lista (ele se torna mais eficiente )
+
+void moveToHead(LRUCache* cache,Node* node) {
+        if(node == cache->head) return;
+
+        if(node->prev) node->prev->next = node->next;
+
+        if(node->next) node->next->prev = node->prev;
+
+        if(node == cache->tail) cache-> tail = node->prev;
 
 
 
+        node->next = cache->head;
+
+        node->prev = NULL;
+
+        if(cache->head) cache->head->prev = node;
+        cache->head=node;
+    }
