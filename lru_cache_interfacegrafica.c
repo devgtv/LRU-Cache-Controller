@@ -27,6 +27,15 @@ typedef struct LRUCache {
 #define COLOR_BORDER 5
 #define COLOR_TITLE 6
 #define COLOR_MENU 7
+#define COLOR_TEST_OK 8
+#define COLOR_TEST_FAIL 9
+
+// Estrutura para resultado de teste
+typedef struct {
+    char nome[100];
+    int passou;
+    char erro[200];
+} ResultadoTeste;
 
 // Dimensões da tela
 int max_y, max_x;
@@ -136,6 +145,139 @@ void freeCache(LRUCache* cache) {
     free(cache);
 }
 
+// Limpar cache (sem liberar a estrutura)
+void clearCache(LRUCache* cache) {
+    Node* current = cache->head;
+    while (current != NULL) {
+        Node* temp = current;
+        current = current->next;
+        free(temp);
+    }
+    cache->head = NULL;
+    cache->tail = NULL;
+    cache->size = 0;
+}
+
+// Verificar ordem do cache (retorna 1 se correto, 0 se errado)
+int checkOrder(LRUCache* cache, int* expected, int count) {
+    if (cache->size != count) return 0;
+    
+    Node* current = cache->head;
+    for (int i = 0; i < count; i++) {
+        if (current == NULL) return 0;
+        if (current->key != expected[i]) return 0;
+        current = current->next;
+    }
+    return 1;
+}
+
+// Rodar testes automatizados
+int rodarTestes(ResultadoTeste* resultados, int* totalTestes) {
+    FILE* arquivo = fopen("testes.txt", "r");
+    if (!arquivo) {
+        return -1; // Arquivo não encontrado
+    }
+    
+    char linha[256];
+    LRUCache* cache = NULL;
+    int testeAtual = -1;
+    int passaram = 0;
+    *totalTestes = 0;
+    int erroNoTeste = 0;
+    
+    while (fgets(linha, sizeof(linha), arquivo)) {
+        // Remover newline
+        linha[strcspn(linha, "\n")] = 0;
+        
+        // Ignorar comentários e linhas vazias
+        if (linha[0] == '#' || linha[0] == '\0') continue;
+        
+        char comando[100];
+        int param1, param2;
+        
+        // Parse do comando
+        if (sscanf(linha, "TESTE;%d;%[^\n]", &param1, comando) == 2) {
+            testeAtual = param1 - 1;
+            strncpy(resultados[testeAtual].nome, comando, 99);
+            resultados[testeAtual].passou = 1;
+            resultados[testeAtual].erro[0] = '\0';
+            erroNoTeste = 0;
+            (*totalTestes)++;
+        }
+        else if (sscanf(linha, "CAP;%d", &param1) == 1) {
+            if (cache) freeCache(cache);
+            cache = createCache(param1);
+        }
+        else if (sscanf(linha, "PUT;%d;%d", &param1, &param2) == 2) {
+            if (cache) put(cache, param1, param2);
+        }
+        else if (sscanf(linha, "GET;%d;%d", &param1, &param2) == 2) {
+            if (cache && !erroNoTeste) {
+                int valor = get(cache, param1);
+                if (valor != param2) {
+                    resultados[testeAtual].passou = 0;
+                    snprintf(resultados[testeAtual].erro, 199, 
+                        "GET %d: esperado %d, obtido %d", param1, param2, valor);
+                    erroNoTeste = 1;
+                }
+            }
+        }
+        else if (sscanf(linha, "CHECK_SIZE;%d", &param1) == 1) {
+            if (cache && !erroNoTeste) {
+                if (cache->size != param1) {
+                    resultados[testeAtual].passou = 0;
+                    snprintf(resultados[testeAtual].erro, 199, 
+                        "SIZE: esperado %d, obtido %d", param1, cache->size);
+                    erroNoTeste = 1;
+                }
+            }
+        }
+        else if (strncmp(linha, "CHECK_ORDER;", 12) == 0) {
+            if (cache && !erroNoTeste) {
+                char* ordem = linha + 12;
+                int expected[20];
+                int count = 0;
+                char ordemCopia[100];
+                strncpy(ordemCopia, ordem, 99);
+                char* token = strtok(ordemCopia, ",");
+                while (token && count < 20) {
+                    expected[count++] = atoi(token);
+                    token = strtok(NULL, ",");
+                }
+                if (!checkOrder(cache, expected, count)) {
+                    resultados[testeAtual].passou = 0;
+                    // Mostrar ordem atual
+                    char ordemAtual[100] = "";
+                    Node* n = cache->head;
+                    while (n) {
+                        char tmp[20];
+                        snprintf(tmp, 19, "%d", n->key);
+                        strcat(ordemAtual, tmp);
+                        if (n->next) strcat(ordemAtual, ",");
+                        n = n->next;
+                    }
+                    snprintf(resultados[testeAtual].erro, 199, 
+                        "ORDEM: esperado [%s], obtido [%s]", ordem, ordemAtual);
+                    erroNoTeste = 1;
+                }
+            }
+        }
+        else if (strncmp(linha, "CLEAR", 5) == 0) {
+            if (cache) clearCache(cache);
+        }
+        else if (strncmp(linha, "FIM_TESTE", 9) == 0) {
+            if (testeAtual >= 0 && resultados[testeAtual].passou) {
+                passaram++;
+            }
+        }
+    }
+    
+    if (cache) freeCache(cache);
+    fclose(arquivo);
+    
+    return passaram;
+}
+
 // Desenhar borda de uma janela
 void drawBorder(int y, int x, int height, int width, const char* title) {
     attron(COLOR_PAIR(COLOR_BORDER));
@@ -235,14 +377,15 @@ void drawCache(LRUCache* cache, int y, int x) {
 
 // Desenhar menu
 void drawMenu(int y, int x) {
-    drawBorder(y, x, 8, 30, "MENU");
+    drawBorder(y, x, 9, 30, "MENU");
     
     attron(COLOR_PAIR(COLOR_MENU));
     mvprintw(y + 2, x + 2, "[1] Inserir elemento");
     mvprintw(y + 3, x + 2, "[2] Buscar elemento");
     mvprintw(y + 4, x + 2, "[3] Mostrar estado");
     mvprintw(y + 5, x + 2, "[4] Limpar cache");
-    mvprintw(y + 6, x + 2, "[Q] Sair");
+    mvprintw(y + 6, x + 2, "[5] Rodar testes");
+    mvprintw(y + 7, x + 2, "[Q] Sair");
     attroff(COLOR_PAIR(COLOR_MENU));
 }
 
@@ -315,6 +458,8 @@ int main() {
         init_pair(COLOR_BORDER, COLOR_WHITE, COLOR_BLACK);
         init_pair(COLOR_TITLE, COLOR_MAGENTA, COLOR_BLACK);
         init_pair(COLOR_MENU, COLOR_WHITE, COLOR_BLACK);
+        init_pair(COLOR_TEST_OK, COLOR_GREEN, COLOR_BLACK);
+        init_pair(COLOR_TEST_FAIL, COLOR_RED, COLOR_BLACK);
     }
     
     // Obter dimensões
@@ -466,6 +611,67 @@ int main() {
                 freeCache(cache);
                 cache = createCache(capacity);
                 addLog("Cache limpo!", 15, 5, max_x - 10);
+                break;
+            
+            case '5':
+                // Rodar testes automatizados
+                {
+                    clear();
+                    attron(COLOR_PAIR(COLOR_TITLE) | A_BOLD);
+                    mvprintw(1, (max_x - 40) / 2, "EXECUTANDO TESTES AUTOMATIZADOS");
+                    attroff(COLOR_PAIR(COLOR_TITLE) | A_BOLD);
+                    
+                    drawBorder(3, 5, max_y - 6, max_x - 10, "RESULTADOS DOS TESTES");
+                    
+                    ResultadoTeste resultados[20];
+                    int totalTestes = 0;
+                    int passaram = rodarTestes(resultados, &totalTestes);
+                    
+                    if (passaram < 0) {
+                        attron(COLOR_PAIR(COLOR_MISS) | A_BOLD);
+                        mvprintw(5, 10, "ERRO: Arquivo 'testes.txt' nao encontrado!");
+                        mvprintw(7, 10, "Certifique-se que o arquivo esta na mesma pasta do executavel.");
+                        attroff(COLOR_PAIR(COLOR_MISS) | A_BOLD);
+                    } else {
+                        int linha = 5;
+                        for (int i = 0; i < totalTestes && linha < max_y - 8; i++) {
+                            if (resultados[i].passou) {
+                                attron(COLOR_PAIR(COLOR_HIT));
+                                mvprintw(linha, 8, "[OK]   Teste %d: %s", i + 1, resultados[i].nome);
+                                attroff(COLOR_PAIR(COLOR_HIT));
+                            } else {
+                                attron(COLOR_PAIR(COLOR_MISS));
+                                mvprintw(linha, 8, "[ERRO] Teste %d: %s", i + 1, resultados[i].nome);
+                                attroff(COLOR_PAIR(COLOR_MISS));
+                                linha++;
+                                attron(COLOR_PAIR(COLOR_REMOVE));
+                                mvprintw(linha, 12, "-> %s", resultados[i].erro);
+                                attroff(COLOR_PAIR(COLOR_REMOVE));
+                            }
+                            linha++;
+                        }
+                        
+                        // Resumo
+                        linha += 2;
+                        drawBorder(linha, 10, 5, 50, "RESUMO");
+                        if (passaram == totalTestes) {
+                            attron(COLOR_PAIR(COLOR_HIT) | A_BOLD);
+                            mvprintw(linha + 2, 15, "TODOS OS TESTES PASSARAM! %d/%d", passaram, totalTestes);
+                            attroff(COLOR_PAIR(COLOR_HIT) | A_BOLD);
+                        } else {
+                            attron(COLOR_PAIR(COLOR_MISS) | A_BOLD);
+                            mvprintw(linha + 2, 15, "TESTES: %d/%d passaram, %d falharam", 
+                                passaram, totalTestes, totalTestes - passaram);
+                            attroff(COLOR_PAIR(COLOR_MISS) | A_BOLD);
+                        }
+                    }
+                    
+                    attron(COLOR_PAIR(COLOR_MENU));
+                    mvprintw(max_y - 2, 5, "Pressione qualquer tecla para voltar...");
+                    attroff(COLOR_PAIR(COLOR_MENU));
+                    refresh();
+                    getch();
+                }
                 break;
                 
             case 'q':

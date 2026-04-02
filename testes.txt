@@ -1,0 +1,188 @@
+# CASOS DE TESTE - SIMULADOR CACHE LRU
+# Formato: COMANDO;parametros;resultado_esperado
+# Comandos: CAP (capacidade), PUT, GET, CHECK_ORDER, CHECK_SIZE, CLEAR
+
+# ========================================
+# TESTE 1: Inserção básica
+# ========================================
+TESTE;1;Insercao basica em cache vazio
+CAP;3
+PUT;10;100
+CHECK_SIZE;1
+CHECK_ORDER;10
+PUT;20;200
+CHECK_SIZE;2
+CHECK_ORDER;20,10
+PUT;30;300
+CHECK_SIZE;3
+CHECK_ORDER;30,20,10
+FIM_TESTE
+
+# ========================================
+# TESTE 2: Cache HIT move para MRU
+# ========================================
+TESTE;2;Cache HIT move elemento para MRU
+CAP;3
+PUT;1;10
+PUT;2;20
+PUT;3;30
+CHECK_ORDER;3,2,1
+GET;1;10
+CHECK_ORDER;1,3,2
+FIM_TESTE
+
+# ========================================
+# TESTE 3: Cache MISS retorna -1
+# ========================================
+TESTE;3;Cache MISS retorna -1
+CAP;3
+PUT;1;100
+PUT;2;200
+GET;99;-1
+CHECK_ORDER;2,1
+FIM_TESTE
+
+# ========================================
+# TESTE 4: Evicção LRU quando cheio
+# ========================================
+TESTE;4;Evicao do LRU quando cache cheio
+CAP;3
+PUT;1;10
+PUT;2;20
+PUT;3;30
+CHECK_ORDER;3,2,1
+PUT;4;40
+CHECK_SIZE;3
+CHECK_ORDER;4,3,2
+GET;1;-1
+FIM_TESTE
+
+# ========================================
+# TESTE 5: Atualizar valor existente
+# ========================================
+TESTE;5;Atualizar valor de chave existente
+CAP;3
+PUT;1;100
+PUT;2;200
+PUT;3;300
+PUT;1;999
+CHECK_ORDER;1,3,2
+GET;1;999
+FIM_TESTE
+
+# ========================================
+# TESTE 6: Múltiplas evicções
+# ========================================
+TESTE;6;Multiplas evicoes sequenciais
+CAP;2
+PUT;1;10
+PUT;2;20
+CHECK_ORDER;2,1
+PUT;3;30
+CHECK_ORDER;3,2
+GET;1;-1
+PUT;4;40
+CHECK_ORDER;4,3
+GET;2;-1
+FIM_TESTE
+
+# ========================================
+# TESTE 7: Cache capacidade 1
+# ========================================
+TESTE;7;Cache com capacidade 1 (extremo)
+CAP;1
+PUT;1;100
+CHECK_SIZE;1
+CHECK_ORDER;1
+PUT;2;200
+CHECK_SIZE;1
+CHECK_ORDER;2
+GET;1;-1
+GET;2;200
+FIM_TESTE
+
+# ========================================
+# TESTE 8: Sequência de acessos
+# ========================================
+TESTE;8;Sequencia de acessos variados
+CAP;4
+PUT;1;10
+PUT;2;20
+PUT;3;30
+PUT;4;40
+CHECK_ORDER;4,3,2,1
+GET;1;10
+CHECK_ORDER;1,4,3,2
+GET;3;30
+CHECK_ORDER;3,1,4,2
+GET;2;20
+CHECK_ORDER;2,3,1,4
+FIM_TESTE
+
+# ========================================
+# TESTE 9: Limpar cache
+# ========================================
+TESTE;9;Limpar cache e reinserir
+CAP;3
+PUT;1;10
+PUT;2;20
+PUT;3;30
+CHECK_SIZE;3
+CLEAR
+CHECK_SIZE;0
+PUT;99;999
+CHECK_SIZE;1
+CHECK_ORDER;99
+FIM_TESTE
+
+# ========================================
+# TESTE 10: Cache grande (5 elementos)
+# ========================================
+TESTE;10;Cache com 5 elementos
+CAP;5
+PUT;1;10
+PUT;2;20
+PUT;3;30
+PUT;4;40
+PUT;5;50
+CHECK_SIZE;5
+CHECK_ORDER;5,4,3,2,1
+GET;1;10
+CHECK_ORDER;1,5,4,3,2
+PUT;6;60
+CHECK_SIZE;5
+CHECK_ORDER;6,1,5,4,3
+GET;2;-1
+FIM_TESTE
+
+# ========================================
+# TESTE 11: Inserir mesma chave varias vezes
+# ========================================
+TESTE;11;Inserir mesma chave multiplas vezes
+CAP;3
+PUT;1;10
+PUT;1;20
+PUT;1;30
+CHECK_SIZE;1
+CHECK_ORDER;1
+GET;1;30
+FIM_TESTE
+
+# ========================================
+# TESTE 12: Verificar ponteiros prev/next
+# ========================================
+TESTE;12;Ordem correta apos operacoes mistas
+CAP;4
+PUT;10;100
+PUT;20;200
+PUT;30;300
+PUT;40;400
+GET;10;100
+PUT;50;500
+CHECK_ORDER;50,10,40,30
+GET;30;300
+CHECK_ORDER;30,50,10,40
+PUT;60;600
+CHECK_ORDER;60,30,50,10
+GET;40;-1
+FIM_TESTE
