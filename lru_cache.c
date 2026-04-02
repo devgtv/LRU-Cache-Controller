@@ -18,3 +18,21 @@ typedef struct LRUCache {
     Node* tail; // ponteiro para o final do menos recente
 } LRUCache;
 
+
+// funcao que cria no 
+
+
+Node* createNode(int key,int value) {
+    Node* newNode = (Node*)malloc(sizeof(Node));
+    newNode->key = key;
+    newNode->value = value;
+    newNode->prev = NULL; //  nao existe anterior do no anteiror logo ele tem que ser inicializado como nulo
+    newNode->next = NULL; //  nao existe proximo do no anteiror logo ele tem que ser inicializado como nulo
+    return newNode;
+}
+
+
+
+
+
+
