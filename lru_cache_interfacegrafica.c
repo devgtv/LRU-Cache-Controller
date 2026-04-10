@@ -378,7 +378,7 @@ void drawCache(LRUCache* cache, int y, int x) {
 // Desenhar menu
 void drawMenu(int y, int x) {
     drawBorder(y, x, 9, 30, "MENU");
-    
+    // parte da interface do menu de op. 
     attron(COLOR_PAIR(COLOR_MENU));
     mvprintw(y + 2, x + 2, "[1] Inserir elemento");
     mvprintw(y + 3, x + 2, "[2] Buscar elemento");
